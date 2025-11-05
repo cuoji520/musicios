@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>错季的小窝</title>
+    <style>
+        /* 样式保持不变 */
+        body {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: sans-serif;
+        }
+        .container {
+            text-align: center;
+        }
+        .audio-player {
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 8px;
+            background: #f5f5f5;
+            margin: 20px 0;
+        }
+        .controls {
+            margin: 15px 0;
+        }
+        .control-btn {
+            padding: 8px 16px;
+            margin: 0 8px;
+            border: none;
+            border-radius: 6px;
+            background: #4285f4;
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .control-btn:hover {
+            background: #3367d6;
+        }
+        .song-list {
+            margin: 30px 0;
+            text-align: left;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .song-list h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .song-item {
+            list-style: none;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .song-item:hover {
+            background: #f0f7ff;
+        }
+        .song-item.active {
+            background: #e8f0fe;
+            border-left: 3px solid #4285f4;
+            font-weight: bold;
+        }
+        .current-info {
+            color: #333;
+            font-size: 16px;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f8f8f8;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #666;
+            text-align: left;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>音乐播放器</h2>
+        <div class="current-info" id="current-song">请点击歌曲或"下一首"按钮开始播放</div>
+
+        <!-- 控制按钮 -->
+        <div class="controls">
+            <button class="control-btn" id="next-btn">下一首（随机）</button>
+        </div>
+
+        <!-- 音频播放器（重点：添加type="audio/mp4"，适配.m4a格式） -->
+        <audio id="player" class="audio-player" controls type="audio/mp4">
+            <p>您的浏览器不支持音频播放</p>
+        </audio>
+
+        <!-- 歌单 -->
+        <div class="song-list">
+            <h3>歌曲列表</h3>
+            <ul id="playlist"></ul>
+        </div>
+
+        <!-- 调试日志 -->
+        <div class="log" id="log">日志：</div>
+    </div>
+
+    <script>
+        // 歌曲列表（重点：将.ogg改为.m4a，对应AAC格式文件）
+        const songs = [
+            { src: "瞬.m4a", name: "瞬" },
+            { src: "不将就.m4a", name: "不将就" },
+            { src: "如果呢.m4a", name: "如果呢" },
+            { src: "暗号.m4a", name: "暗号" },
+            { src: "关键词.m4a", name: "关键词" },
+            { src: "去北极忘记你.m4a", name: "去北极忘记你" },
+        ];
+
+        // 获取DOM元素
+        const player = document.getElementById('player');
+        const currentSongEl = document.getElementById('current-song');
+        const nextBtn = document.getElementById('next-btn');
+        const playlistEl = document.getElementById('playlist');
+        const logEl = document.getElementById('log');
+
+        let currentSongIndex = -1;
+
+        // 日志输出函数
+        function log(message) {
+            const time = new Date().toLocaleTimeString();
+            logEl.innerHTML += `<br>[${time}] ${message}`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(`[${time}] ${message}`);
+        }
+
+        // 初始化歌单
+        function initPlaylist() {
+            songs.forEach((song, index) => {
+                const li = document.createElement('li');
+                li.className = "song-item";
+                li.textContent = song.name;
+                li.addEventListener('click', () => {
+                    log(`点击歌单：${song.name}`);
+                    playSongByIndex(index);
+                });
+                playlistEl.appendChild(li);
+            });
+        }
+
+        // 根据索引播放歌曲（逻辑不变，适配新格式）
+        function playSongByIndex(index) {
+            if (index < 0 || index >= songs.length) {
+                log("无效的歌曲索引");
+                return;
+            }
+
+            currentSongIndex = index;
+            const song = songs[index];
+
+            player.pause();
+            player.src = song.src;
+            currentSongEl.textContent = `正在播放：${song.name}`;
+            log(`切换到歌曲：${song.name}（路径：${song.src}）`);
+
+            updatePlaylistHighlight();
+
+            player.load();
+            const playPromise = player.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    log("播放成功（用户交互触发）");
+                }).catch(err => {
+                    log(`需要用户手动点击播放器开始：${err.message}`);
+                    currentSongEl.textContent += "（请点击播放器的播放按钮）";
+                });
+            }
+        }
+
+        // 随机播放下一首
+        function playRandomSong() {
+            let randomIndex;
+            if (songs.length > 1) {
+                do {
+                    randomIndex = Math.floor(Math.random() * songs.length);
+                } while (randomIndex === currentSongIndex);
+            } else {
+                randomIndex = 0;
+            }
+            playSongByIndex(randomIndex);
+        }
+
+        // 更新歌单高亮
+        function updatePlaylistHighlight() {
+            const items = document.querySelectorAll('.song-item');
+            items.forEach((item, index) => {
+                if (index === currentSongIndex) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+
+        // 事件监听
+        function bindEvents() {
+            nextBtn.addEventListener('click', () => {
+                log("点击【下一首（随机）】按钮（用户主动交互）");
+                playRandomSong();
+            });
+
+            player.addEventListener('ended', () => {
+                log("歌曲播放结束，自动切到下一首（已激活播放权限）");
+                playRandomSong();
+            });
+
+            player.addEventListener('error', () => {
+                const errorCode = player.error.code;
+                const errorMsg = {
+                    1: "用户终止加载",
+                    2: "网络错误（文件可能不存在）",
+                    3: "音频解码失败（文件损坏或格式不支持）",
+                    4: "URL无效"
+                }[errorCode] || "未知错误";
+                log(`音频错误：${errorMsg}（错误码：${errorCode}）`);
+            });
+        }
+
+        // 初始化
+        function init() {
+            log("页面加载完成，初始化播放器");
+            initPlaylist();
+            bindEvents();
+            log("等待用户点击按钮或歌曲开始播放（iOS需要主动交互）");
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
